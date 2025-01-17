@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openai("gpt-4o-mini"),
     system: `You are a helpful assistant. You MUST check your knowledge base before answering any questions by using your tool "getInformation".
-    Only respond to questions using information from tool calls.
+    ALWAYS AND ONLY RESPOND TO QUESTIONS USING INFORMATION FROM TOOL CALLS.
     if no relevant information is found in the tool calls, respond, "Sorry, I don't know"`,
     messages,
     tools: {
@@ -28,13 +28,23 @@ export async function POST(req: Request) {
         execute: async ({ content }) => createResource({ content }),
       }),
       getInformation: tool({
-        description: `get information from your knowledge base to answer questions.`,
+        description: `Get information from your knowledge base to answer questions. This tool will return an array of JSON objects with the following format:
+        [
+          {
+            "name": "The name of the resource or content",
+            "similarity": "The similarity score of the resource or content to the user's question"
+          }
+        ]
+
+        You MUST use the information from the tool call to answer the user's question. Rank higher similarity scores first. And if you are not confident, tell the user you don't know.
+        `,
         parameters: z.object({
           question: z.string().describe("the users question"),
         }),
         execute: async ({ question }) => {
           const relevantContent = await findRelevantContent(question);
-          console.log(question, relevantContent);
+          console.log("question", question);
+          console.log("relevantContent", relevantContent);
           return relevantContent;
         },
       }),
